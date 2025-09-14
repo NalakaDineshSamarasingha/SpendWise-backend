@@ -37,7 +37,7 @@ paths:
         '401':
           description: Unauthorized
 
-  /google:
+  auth/google:
     get:
       summary: Initiate Google OAuth authentication
       responses:
@@ -49,7 +49,7 @@ paths:
               schema:
                 type: string
 
-  /google/callback:
+  auth/google/callback:
     get:
       summary: Google OAuth callback, issues JWT and redirects
       responses:
