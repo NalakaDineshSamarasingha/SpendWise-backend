@@ -5,92 +5,65 @@ info:
   description: API documentation for SpendWise backend
 servers:
   - url: http://localhost:3000
+
 paths:
-  /api/auth/login:
-    post:
-      summary: User login
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                password:
-                  type: string
+  /expenses:
+    get:
+      summary: Get user expenses
+      security:
+        - bearerAuth: []
       responses:
         '200':
-          description: Successful login
+          description: List of user expenses
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  token:
-                    type: string
+                  expenses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        amount:
+                          type: number
+                        category:
+                          type: string
+                        date:
+                          type: string
+                          format: date-time
         '401':
-          description: Invalid credentials
-  /api/auth/register:
-    post:
-      summary: User registration
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                email:
-                  type: string
-                password:
-                  type: string
-      responses:
-        '201':
-          description: User created
-        '400':
-          description: Bad request
-  /api/expenses:
+          description: Unauthorized
+
+  /google:
     get:
-      summary: Get all expenses
+      summary: Initiate Google OAuth authentication
       responses:
-        '200':
-          description: List of expenses
-          content:
-            application/json:
+        '302':
+          description: Redirect to Google OAuth
+          headers:
+            Location:
+              description: URL to redirect the client to
               schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                    amount:
-                      type: number
-                    category:
-                      type: string
-                    date:
-                      type: string
-    post:
-      summary: Add a new expense
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                amount:
-                  type: number
-                category:
-                  type: string
-                date:
-                  type: string
+                type: string
+
+  /google/callback:
+    get:
+      summary: Google OAuth callback, issues JWT and redirects
       responses:
-        '201':
-          description: Expense created
-        '400':
-          description: Bad request
+        '302':
+          description: Redirect to frontend with JWT token
+          headers:
+            Location:
+              description: Redirect URL including JWT token
+              schema:
+                type: string
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
