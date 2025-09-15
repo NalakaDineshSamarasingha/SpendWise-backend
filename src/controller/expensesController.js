@@ -19,4 +19,19 @@ exports.createAccount = async (req, res) => {
   }
 };
 
-// Add more expense-related functions here
+
+// Check if a user has an account
+exports.checkUserAccount = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    // Find account where _id or members contains userId
+    const account = await Account.findOne({ $or: [ { _id: userId }, { members: userId } ] }).populate('members');
+    if (!account) {
+      return res.status(404).json({ hasAccount: false });
+    }
+    // Optionally, format user data for response
+    return res.json({ hasAccount: true, data: account });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error.', error: error.message });
+  }
+};
