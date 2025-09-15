@@ -29,7 +29,7 @@ router.get(
   (req, res) => {
     // Create JWT with your app secret
     const token = jwt.sign(
-      { id: req.user._id, name: req.user.displayName, email: req.user.email },
+      { id: req.user._id, name: req.user.displayName, email: req.user.email,picture: req.user.picture  },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
