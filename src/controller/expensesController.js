@@ -38,7 +38,7 @@ exports.checkUserAccount = async (req, res) => {
   try {
     const userId = req.params.userId;
     // Find account where _id or members contains userId
-    const account = await Account.findOne({ $or: [ { _id: userId }, { members: userId } ] }).populate('members');
+    const account = await Account.findOne({ $or: [ { userid: userId }, { members: userId } ] }).populate('members');
     if (!account) {
       return res.status(404).json({ hasAccount: false });
     }
