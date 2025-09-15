@@ -20,7 +20,7 @@ exports.createAccount = async (req, res) => {
     }
     // Create account with user._id as _id
     const account = new Account({
-      _id: user._id,
+      userid: user._id,
       name,
       members: [],
       balance: balance || 0
