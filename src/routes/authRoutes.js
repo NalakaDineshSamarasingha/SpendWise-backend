@@ -33,7 +33,7 @@ router.get(
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
-    console.log(req.user.picture);
+    console.log(req.user);
 
     // Retrieve redirect_uri from state
     const redirectUrl = req.query.state
