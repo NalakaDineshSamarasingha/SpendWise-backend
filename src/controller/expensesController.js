@@ -3,13 +3,15 @@ const Account = require('../models/Account');
 // Create a new account
 exports.createAccount = async (req, res) => {
   try {
-    const { name, members, balance } = req.body;
+    const { name, balance } = req.body;
     if (!name) {
       return res.status(400).json({ message: 'Account name is required.' });
     }
+    // Set _id to the authenticated user's id, members to empty
     const account = new Account({
+      _id: req.user._id,
       name,
-      members: members || [],
+      members: [],
       balance: balance || 0
     });
     await account.save();
