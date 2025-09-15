@@ -4,12 +4,23 @@ const Account = require('../models/Account');
 exports.createAccount = async (req, res) => {
   try {
     const { name, balance } = req.body;
+    // Validate account name
     if (!name) {
       return res.status(400).json({ message: 'Account name is required.' });
     }
-    // Set _id to the authenticated user's id, members to empty
+    // Get user id from email
+    const email = req.user && req.user.email;
+    if (!email) {
+      return res.status(400).json({ message: 'Authenticated user email not found.' });
+    }
+    const User = require('../models/User');
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found for provided email.' });
+    }
+    // Create account with user._id as _id
     const account = new Account({
-      _id: req.user._id,
+      _id: user._id,
       name,
       members: [],
       balance: balance || 0
