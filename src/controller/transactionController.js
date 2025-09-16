@@ -17,8 +17,32 @@ async function getAuthenticatedUserId(req) {
 // Helper to find the account associated with the authenticated user
 async function getUserAccountId(userId) {
   if (!userId) return null;
-  const account = await Account.findOne({ $or: [{ _id: userId }, { members: userId }] }).select('_id');
+  const uid = mongoose.Types.ObjectId.isValid(userId)
+    ? new mongoose.Types.ObjectId(userId)
+    : (mongoose.isValidObjectId(userId) ? userId : null);
+  if (!uid) return null;
+  const account = await Account.findOne({ $or: [{ _id: uid }, { members: uid }] }).select('_id');
   return account?._id || null;
+}
+
+// Ensure account exists for user; create default if missing
+async function ensureUserAccountId(userId) {
+  const uid = mongoose.Types.ObjectId.isValid(userId)
+    ? new mongoose.Types.ObjectId(userId)
+    : (mongoose.isValidObjectId(userId) ? userId : null);
+  if (!uid) return null;
+  let account = await Account.findOne({ $or: [{ _id: uid }, { members: uid }] }).select('_id');
+  if (account) return account._id;
+  // Create default account named 'main'
+  try {
+    const acc = new Account({ _id: uid, name: 'main', members: [], balance: 0 });
+    await acc.save();
+    return acc._id;
+  } catch (e) {
+    // If concurrently created, fetch again
+    account = await Account.findOne({ _id: uid }).select('_id');
+    return account?._id || null;
+  }
 }
 
 // Create
@@ -27,8 +51,9 @@ exports.createTransaction = async (req, res) => {
     const userId = await getAuthenticatedUserId(req);
     if (!userId) return res.status(400).json({ message: 'Authenticated user not found.' });
 
-    const accountId = await getUserAccountId(userId);
-    if (!accountId) return res.status(404).json({ message: 'Account not found for user.' });
+  // Ensure account exists (auto-create 'main' if missing)
+  const accountId = await ensureUserAccountId(userId);
+  if (!accountId) return res.status(404).json({ message: 'Account not found for user.' });
 
     const { description, amount, type, date, category } = req.body;
     if (!description || amount == null || !type) {
