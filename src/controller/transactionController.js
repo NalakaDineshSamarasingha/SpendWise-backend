@@ -21,7 +21,7 @@ async function getUserAccountId(userId) {
     ? new mongoose.Types.ObjectId(userId)
     : (mongoose.isValidObjectId(userId) ? userId : null);
   if (!uid) return null;
-  const account = await Account.findOne({ $or: [{ _id: uid }, { members: uid }] }).select('_id');
+  const account = await Account.findOne({ $or: [{ userid: uid }, { members: uid }] }).select('_id');
   return account?._id || null;
 }
 

@@ -1,4 +1,6 @@
+const mongoose = require('mongoose');
 const Account = require('../models/Account');
+const Transaction = require('../models/Transaction');
 
 // Create a new account
 exports.createAccount = async (req, res) => {
@@ -20,7 +22,7 @@ exports.createAccount = async (req, res) => {
     }
     // Create account with user._id as _id
     const account = new Account({
-      userid: user._id,
+      _id: user._id,
       name,
       members: [],
       balance: balance || 0
@@ -37,13 +39,33 @@ exports.createAccount = async (req, res) => {
 exports.checkUserAccount = async (req, res) => {
   try {
     const userId = req.params.userId;
-    // Find account where _id or members contains userId
-    const account = await Account.findOne({ $or: [ { userid: userId }, { members: userId } ] }).populate('members');
+    // Cast to ObjectId for reliable matching
+    const uid = mongoose.Types.ObjectId.isValid(userId)
+      ? new mongoose.Types.ObjectId(userId)
+      : null;
+    // Find account where _id equals userId or members contains userId
+    const account = uid
+      ? await Account.findOne({ $or: [ { userid: uid }, { members: uid } ] }).populate('members')
+      : null;
     if (!account) {
       return res.status(404).json({ hasAccount: false });
     }
-    // Optionally, format user data for response
-    return res.json({ hasAccount: true, data: account });
+    // Fetch transactions for this account
+    const transactions = await Transaction.find({ account: account._id }).sort({ date: -1 });
+    // Compute totals
+    const totals = transactions.reduce((acc, t) => {
+      if (t.type === 'income') acc.income += t.amount;
+      else if (t.type === 'expense') acc.expenses += t.amount;
+      return acc;
+    }, { income: 0, expenses: 0 });
+
+    const payload = {
+      accountBalance: account.balance,
+      income: totals.income,
+      expenses: totals.expenses,
+      transactions,
+    };
+    return res.json({ hasAccount: true, data: payload });
   } catch (error) {
     res.status(500).json({ message: 'Server error.', error: error.message });
   }
