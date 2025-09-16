@@ -31,16 +31,16 @@ async function ensureUserAccountId(userId) {
     ? new mongoose.Types.ObjectId(userId)
     : (mongoose.isValidObjectId(userId) ? userId : null);
   if (!uid) return null;
-  let account = await Account.findOne({ $or: [{ _id: uid }, { members: uid }] }).select('_id');
+  let account = await Account.findOne({ $or: [{ userid: uid }, { members: uid }] }).select('_id');
   if (account) return account._id;
   // Create default account named 'main'
   try {
-    const acc = new Account({ _id: uid, name: 'main', members: [], balance: 0 });
+    const acc = new Account({ userid: uid, name: 'main', members: [], balance: 0 });
     await acc.save();
     return acc._id;
   } catch (e) {
     // If concurrently created, fetch again
-    account = await Account.findOne({ _id: uid }).select('_id');
+    account = await Account.findOne({ userid: uid }).select('_id');
     return account?._id || null;
   }
 }
