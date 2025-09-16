@@ -46,6 +46,14 @@ exports.createTransaction = async (req, res) => {
     });
 
     await tx.save();
+    // Update account balance: income +amount, expense -amount
+    const signedAmount = type === 'income' ? amount : -amount;
+    const incResult = await Account.updateOne({ _id: accountId }, { $inc: { balance: signedAmount } });
+    if (!incResult.matchedCount) {
+      // rollback created transaction if account update failed
+      await Transaction.deleteOne({ _id: tx._id });
+      return res.status(500).json({ message: 'Failed to update account balance.' });
+    }
     res.status(201).json(tx);
   } catch (error) {
     res.status(500).json({ message: 'Server error.', error: error.message });
@@ -97,21 +105,45 @@ exports.updateTransaction = async (req, res) => {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid transaction id.' });
 
+    // Load existing transaction to compute balance delta
+    const existing = await Transaction.findOne({ _id: id, account: accountId });
+    if (!existing) return res.status(404).json({ message: 'Transaction not found.' });
+
     const allowed = ['description', 'amount', 'type', 'date', 'category'];
     const update = {};
     for (const key of allowed) {
       if (key in req.body) update[key] = req.body[key];
     }
-    // Never allow changing account or addedBy via API
-    const tx = await Transaction.findOneAndUpdate(
+
+    // Compute balance delta if amount/type changed
+    const oldSigned = existing.type === 'income' ? existing.amount : -existing.amount;
+    const newAmount = 'amount' in update ? update.amount : existing.amount;
+    const newType = 'type' in update ? update.type : existing.type;
+    const newSigned = newType === 'income' ? newAmount : -newAmount;
+    const delta = newSigned - oldSigned;
+
+    // Apply transaction update
+    const updated = await Transaction.findOneAndUpdate(
       { _id: id, account: accountId },
       { $set: update },
       { new: true }
     );
+    if (!updated) return res.status(404).json({ message: 'Transaction not found after update.' });
 
-    if (!tx) return res.status(404).json({ message: 'Transaction not found.' });
+    // If balance impacted, update account
+    if (delta !== 0) {
+      const incResult = await Account.updateOne({ _id: accountId }, { $inc: { balance: delta } });
+      if (!incResult.matchedCount) {
+        // rollback transaction update
+        await Transaction.findOneAndUpdate(
+          { _id: id },
+          { $set: existing.toObject() }
+        );
+        return res.status(500).json({ message: 'Failed to update account balance.' });
+      }
+    }
 
-    res.json(tx);
+    res.json(updated);
   } catch (error) {
     res.status(500).json({ message: 'Server error.', error: error.message });
   }
@@ -127,8 +159,33 @@ exports.deleteTransaction = async (req, res) => {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid transaction id.' });
 
-    const result = await Transaction.findOneAndDelete({ _id: id, account: accountId });
-    if (!result) return res.status(404).json({ message: 'Transaction not found.' });
+    // Load the transaction first to compute reverse amount
+    const tx = await Transaction.findOne({ _id: id, account: accountId });
+    if (!tx) return res.status(404).json({ message: 'Transaction not found.' });
+
+    const oldSigned = tx.type === 'income' ? tx.amount : -tx.amount;
+    // Delete the transaction
+    const delRes = await Transaction.deleteOne({ _id: id, account: accountId });
+    if (!delRes.deletedCount) return res.status(404).json({ message: 'Transaction not found.' });
+
+    // Reverse balance effect
+    const incResult = await Account.updateOne({ _id: accountId }, { $inc: { balance: -oldSigned } });
+    if (!incResult.matchedCount) {
+      // try to restore the transaction
+      try {
+        await Transaction.create({
+          _id: tx._id,
+          description: tx.description,
+          amount: tx.amount,
+          type: tx.type,
+          date: tx.date,
+          category: tx.category,
+          addedBy: tx.addedBy,
+          account: tx.account,
+        });
+      } catch (_) {}
+      return res.status(500).json({ message: 'Failed to update account balance.' });
+    }
 
     res.json({ message: 'Transaction deleted.' });
   } catch (error) {
