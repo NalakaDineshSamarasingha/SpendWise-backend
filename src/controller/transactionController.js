@@ -79,7 +79,10 @@ exports.createTransaction = async (req, res) => {
       await Transaction.deleteOne({ _id: tx._id });
       return res.status(500).json({ message: 'Failed to update account balance.' });
     }
-    res.status(201).json(tx);
+    // populate addedBy for response
+    const populated = await Transaction.findById(tx._id).populate('addedBy', 'displayName email');
+    const addedByName = populated.addedBy.displayName || populated.addedBy.email;
+    res.status(201).json({ ...populated.toObject(), addedByName });
   } catch (error) {
     res.status(500).json({ message: 'Server error.', error: error.message });
   }
@@ -94,8 +97,14 @@ exports.getTransactions = async (req, res) => {
     const accountId = await getUserAccountId(userId);
     if (!accountId) return res.status(404).json({ message: 'Account not found for user.' });
 
-    const txs = await Transaction.find({ account: accountId }).sort({ date: -1 });
-    res.json(txs);
+    const txs = await Transaction.find({ account: accountId })
+      .sort({ date: -1 })
+      .populate('addedBy', 'displayName email');
+    const mapped = txs.map(t => ({
+      ...t.toObject(),
+      addedByName: t.addedBy?.displayName || t.addedBy?.email || null,
+    }));
+    res.json(mapped);
   } catch (error) {
     res.status(500).json({ message: 'Server error.', error: error.message });
   }
@@ -111,10 +120,11 @@ exports.getTransactionById = async (req, res) => {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid transaction id.' });
 
-    const tx = await Transaction.findOne({ _id: id, account: accountId });
+    const tx = await Transaction.findOne({ _id: id, account: accountId })
+      .populate('addedBy', 'displayName email');
     if (!tx) return res.status(404).json({ message: 'Transaction not found.' });
-
-    res.json(tx);
+    const addedByName = tx.addedBy?.displayName || tx.addedBy?.email || null;
+    res.json({ ...tx.toObject(), addedByName });
   } catch (error) {
     res.status(500).json({ message: 'Server error.', error: error.message });
   }
@@ -168,7 +178,9 @@ exports.updateTransaction = async (req, res) => {
       }
     }
 
-    res.json(updated);
+    const populated = await Transaction.findById(updated._id).populate('addedBy', 'displayName email');
+    const addedByName = populated.addedBy?.displayName || populated.addedBy?.email || null;
+    res.json({ ...populated.toObject(), addedByName });
   } catch (error) {
     res.status(500).json({ message: 'Server error.', error: error.message });
   }
