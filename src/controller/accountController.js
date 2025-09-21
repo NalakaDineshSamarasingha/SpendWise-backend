@@ -52,7 +52,7 @@ exports.addMemberToAccount = async (req, res) => {
 		const ownerId = new mongoose.Types.ObjectId(authUserId);
 
 		// Find owner's account (account _id == ownerId)
-		let account = await Account.findOne({ _id: ownerId });
+		let account = await Account.findOne({ userid: ownerId });
 		if (!account) {
 			return res.status(404).json({ message: 'Owner account not found. Create an account first.' });
 		}
