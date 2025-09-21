@@ -13,7 +13,7 @@ const router = express.Router();
 // Create
 router.post('/transactions', protect, createTransaction);
 // Read all
-router.get('/transactions', protect, getTransactions);
+router.get('/transactions', getTransactions);
 // Read one
 router.get('/transactions/:id', protect, getTransactionById);
 // Update

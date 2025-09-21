@@ -50,8 +50,15 @@ exports.checkUserAccount = async (req, res) => {
     if (!account) {
       return res.status(404).json({ hasAccount: false });
     }
-    // Fetch transactions for this account
-    const transactions = await Transaction.find({ account: account._id }).sort({ date: -1 });
+    // Fetch transactions for this account with addedBy populated
+    const txDocs = await Transaction.find({ account: account._id })
+      .sort({ date: -1 })
+      .populate('addedBy', 'displayName email');
+    const transactions = txDocs.map(t => {
+      const obj = t.toObject();
+      obj.addedByName = t.addedBy?.displayName || t.addedBy?.email || null;
+      return obj;
+    });
     // Compute totals
     const totals = transactions.reduce((acc, t) => {
       if (t.type === 'income') acc.income += t.amount;

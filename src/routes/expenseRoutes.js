@@ -14,6 +14,6 @@ router.get("/", protect, (req, res) => {
 router.post("/account", protect, createAccount);
 
 // Check if a user has an account
-router.get("/user/:userId/account", protect, checkUserAccount);
+router.get("/user/:userId/account",protect, checkUserAccount);
 
 module.exports = router;
