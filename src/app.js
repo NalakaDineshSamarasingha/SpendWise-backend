@@ -7,6 +7,7 @@ require("dotenv").config();
 const authRoutes = require("./routes/authRoutes");
 const expenseRoutes = require("./routes/expenseRoutes");
 const transactionRoutes = require("./routes/transactionRoutes");
+const accountRoutes = require("./routes/accountRoutes");
 
 connectDB();
 
@@ -23,6 +24,7 @@ app.use(passport.session());
 app.use("/auth", authRoutes);
 app.use("/expenses", expenseRoutes);
 app.use("/trans", transactionRoutes);
+app.use("/account", accountRoutes);
 
 app.get("/", (req, res) => res.send("Welcome to Expense Tracker API"));
 
