@@ -91,7 +91,7 @@ exports.getAccountCollaborators = async (req, res) => {
 		const ownerId = new mongoose.Types.ObjectId(authUserId);
 
 		// Find account where user is owner (account._id == ownerId) OR member
-		const account = await Account.findOne({ $or: [ { _id: ownerId }, { members: ownerId } ] })
+		const account = await Account.findOne({ $or: [ { userid: ownerId }, { members: ownerId } ] })
 			.populate('members', '_id email displayName picture createdAt');
 		if (!account) {
 			return res.status(404).json({ message: 'Account not found for user.' });
