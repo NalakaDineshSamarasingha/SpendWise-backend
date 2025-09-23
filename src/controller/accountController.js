@@ -80,3 +80,50 @@ exports.addMemberToAccount = async (req, res) => {
 		res.status(500).json({ message: 'Server error', error: error.message });
 	}
 };
+
+// GET /account/collaborators  -> returns members (users) of the authenticated user's account
+exports.getAccountCollaborators = async (req, res) => {
+	try {
+		const authUserId = (req.user && (req.user._id || req.user.id)) ? req.user._id || req.user.id : null;
+		if (!authUserId || !mongoose.Types.ObjectId.isValid(authUserId)) {
+			return res.status(400).json({ message: 'Authenticated user id not found or invalid.' });
+		}
+		const ownerId = new mongoose.Types.ObjectId(authUserId);
+
+		// Find account where user is owner (account._id == ownerId) OR member
+		const account = await Account.findOne({ $or: [ { _id: ownerId }, { members: ownerId } ] })
+			.populate('members', '_id email displayName picture createdAt');
+		if (!account) {
+			return res.status(404).json({ message: 'Account not found for user.' });
+		}
+
+		// Build users list: owner + members (avoid duplicate if owner also in members)
+		const ownerUser = await User.findById(account._id).select('_id email displayName picture createdAt');
+		const memberMap = new Map();
+		if (ownerUser) {
+			memberMap.set(ownerUser._id.toString(), {
+				id: ownerUser._id,
+				email: ownerUser.email,
+				displayName: ownerUser.displayName || null,
+				picture: ownerUser.picture || null,
+				role: 'owner',
+				createdAt: ownerUser.createdAt,
+			});
+		}
+		for (const m of account.members || []) {
+			memberMap.set(m._id.toString(), {
+				id: m._id,
+				email: m.email,
+				displayName: m.displayName || null,
+				picture: m.picture || null,
+				role: memberMap.has(m._id.toString()) ? memberMap.get(m._id.toString()).role : 'member',
+				createdAt: m.createdAt,
+			});
+		}
+
+		const users = Array.from(memberMap.values());
+		res.json({ users, count: users.length, accountId: account._id });
+	} catch (error) {
+		res.status(500).json({ message: 'Server error', error: error.message });
+	}
+};

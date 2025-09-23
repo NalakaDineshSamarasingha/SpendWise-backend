@@ -1,6 +1,6 @@
 const express = require('express');
 const protect = require('../middleware/auth');
-const { suggestUsersByEmail, addMemberToAccount } = require('../controller/accountController');
+const { suggestUsersByEmail, addMemberToAccount, getAccountCollaborators } = require('../controller/accountController');
 
 const router = express.Router();
 
@@ -9,5 +9,6 @@ router.get('/users/suggest', protect, suggestUsersByEmail);
 
 // POST /account/members { email }
 router.post('/members', protect, addMemberToAccount);
+router.get('/collaborators', protect, getAccountCollaborators);
 
 module.exports = router;
