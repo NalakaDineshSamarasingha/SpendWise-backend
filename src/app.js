@@ -8,6 +8,8 @@ const authRoutes = require("./routes/authRoutes");
 const expenseRoutes = require("./routes/expenseRoutes");
 const transactionRoutes = require("./routes/transactionRoutes");
 const accountRoutes = require("./routes/accountRoutes");
+const DebtRoutes = require("./routes/debtRoutes");
+const budgetRoutes = require("./routes/budgetRoutes");
 
 connectDB();
 
@@ -25,6 +27,8 @@ app.use("/auth", authRoutes);
 app.use("/expenses", expenseRoutes);
 app.use("/trans", transactionRoutes);
 app.use("/account", accountRoutes);
+app.use("/debt", DebtRoutes);
+app.use("/budget", budgetRoutes);
 
 app.get("/", (req, res) => res.send("Welcome to Expense Tracker API"));
 
